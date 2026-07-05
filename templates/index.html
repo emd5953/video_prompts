@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video to App</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a; color: #e5e5e5;
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    }
+    .container { max-width: 800px; width: 100%; padding: 48px 24px; }
+    h1 {
+      font-size: 2.5rem; font-weight: 700; text-align: center; margin-bottom: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .subtitle { text-align: center; color: #888; margin-bottom: 48px; font-size: 1.1rem; }
+
+    /* Upload */
+    .upload-zone {
+      border: 2px dashed #333; border-radius: 16px; padding: 60px 24px;
+      text-align: center; cursor: pointer; transition: all 0.2s; background: #111;
+    }
+    .upload-zone:hover, .upload-zone.dragover { border-color: #667eea; background: #1a1a2e; }
+    .upload-zone svg { width: 48px; height: 48px; margin-bottom: 16px; color: #555; }
+    .upload-zone p { color: #888; margin-bottom: 8px; }
+    .upload-zone .formats { font-size: 0.85rem; color: #555; }
+    input[type="file"] { display: none; }
+    .file-info {
+      margin-top: 16px; padding: 12px 16px; background: #1a1a2e; border-radius: 8px;
+      display: none; align-items: center; justify-content: space-between;
+    }
+    .file-info.visible { display: flex; }
+    .file-info .name { color: #667eea; font-weight: 500; }
+    .file-info .size { color: #666; font-size: 0.85rem; }
+
+    /* Buttons */
+    .btn {
+      padding: 14px 28px; border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;
+      width: 100%; margin-top: 24px; padding: 16px; font-size: 1.1rem;
+    }
+    .btn-green { background: #4ade80; color: #0a0a0a; }
+    .btn-outline {
+      background: transparent; border: 1px solid #333; color: #e5e5e5;
+    }
+    .btn-outline:hover { border-color: #667eea; }
+    .hidden { display: none !important; }
+
+    /* Progress */
+    .progress { margin-top: 32px; }
+    .progress-step {
+      display: flex; align-items: center; gap: 12px; padding: 12px 0;
+      color: #555; transition: color 0.3s;
+    }
+    .progress-step.active { color: #667eea; }
+    .progress-step.done { color: #4ade80; }
+    .progress-step .dot {
+      width: 10px; height: 10px; border-radius: 50%; background: #333;
+      flex-shrink: 0; transition: background 0.3s;
+    }
+    .progress-step.active .dot { background: #667eea; animation: pulse 1.5s infinite; }
+    .progress-step.done .dot { background: #4ade80; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* Spec Review */
+    .spec-review {
+      margin-top: 32px; padding: 24px; background: #111;
+      border: 1px solid #222; border-radius: 16px;
+    }
+    .spec-review h2 {
+      font-size: 1.2rem; margin-bottom: 4px; color: #e5e5e5;
+    }
+    .spec-review .spec-desc {
+      color: #888; margin-bottom: 16px; font-size: 0.95rem; line-height: 1.5;
+    }
+    .spec-tabs {
+      display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .spec-tab {
+      padding: 6px 14px; border-radius: 8px; font-size: 0.85rem;
+      background: #1a1a1a; color: #888; border: 1px solid #222;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .spec-tab.active { background: #1a1a2e; color: #667eea; border-color: #667eea; }
+    .spec-tab:hover { border-color: #444; }
+    .spec-content {
+      background: #0d0d0d; border: 1px solid #222; border-radius: 8px;
+      padding: 16px; max-height: 400px; overflow-y: auto;
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem;
+      line-height: 1.6; color: #ccc; white-space: pre-wrap; word-break: break-word;
+    }
+    .spec-content:focus { outline: 1px solid #667eea; border-color: #667eea; }
+    .spec-actions {
+      display: flex; gap: 12px; margin-top: 16px; align-items: center;
+    }
+    .spec-actions .edit-hint {
+      color: #555; font-size: 0.8rem; margin-left: auto;
+    }
+
+    /* Screens summary */
+    .screens-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px; margin-bottom: 16px;
+    }
+    .screen-card {
+      background: #1a1a1a; border: 1px solid #222; border-radius: 8px; padding: 12px;
+    }
+    .screen-card .screen-name { font-weight: 600; color: #e5e5e5; margin-bottom: 4px; }
+    .screen-card .screen-route { font-size: 0.8rem; color: #667eea; margin-bottom: 4px; }
+    .screen-card .screen-components { font-size: 0.8rem; color: #666; }
+
+    /* Result */
+    .result {
+      margin-top: 32px; padding: 24px; background: #111;
+      border: 1px solid #222; border-radius: 16px;
+    }
+    .result h2 { font-size: 1.3rem; margin-bottom: 8px; color: #e5e5e5; }
+    .result p { color: #888; margin-bottom: 16px; line-height: 1.5; }
+    .result .stats { display: flex; gap: 24px; margin-bottom: 20px; }
+    .result .stat { text-align: center; }
+    .result .stat .num { font-size: 1.5rem; font-weight: 700; color: #667eea; }
+    .result .stat .label { font-size: 0.8rem; color: #666; }
+    .result-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .download-btn {
+      display: inline-block; padding: 12px 32px; background: #4ade80;
+      color: #0a0a0a; border-radius: 8px; text-decoration: none;
+      font-weight: 600; transition: opacity 0.2s;
+    }
+    .download-btn:hover { opacity: 0.9; }
+
+    /* Error */
+    .error {
+      margin-top: 24px; padding: 16px; background: #2d1b1b;
+      border: 1px solid #5c2626; border-radius: 8px; color: #f87171;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Video → App</h1>
+    <p class="subtitle">Upload a demo video. Get a working app.</p>
+
+    <!-- PHASE 1: Upload -->
+    <div id="phaseUpload">
+      <div class="upload-zone" id="dropZone">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+        </svg>
+        <p>Drop your video here or click to browse</p>
+        <span class="formats">MP4, WebM, MOV, AVI, MKV</span>
+      </div>
+      <input type="file" id="fileInput" accept="video/*">
+      <div class="file-info" id="fileInfo">
+        <span class="name" id="fileName"></span>
+        <span class="size" id="fileSize"></span>
+      </div>
+      <button class="btn btn-primary hidden" id="analyzeBtn">Analyze Video</button>
+    </div>
+
+    <!-- PHASE 2: Progress (analysis) -->
+    <div id="phaseAnalyze" class="hidden">
+      <div class="progress">
+        <div class="progress-step" id="step1"><span class="dot"></span><span>Uploading video to Gemini...</span></div>
+        <div class="progress-step" id="step2"><span class="dot"></span><span>Gemini is watching your video...</span></div>
+      </div>
+    </div>
+
+    <!-- PHASE 3: Spec Review -->
+    <div id="phaseSpec" class="hidden">
+      <div class="spec-review">
+        <h2 id="specAppName"></h2>
+        <p class="spec-desc" id="specDesc"></p>
+
+        <div class="screens-grid" id="screensGrid"></div>
+
+        <div class="spec-tabs" id="specTabs">
+          <div class="spec-tab active" data-tab="screens">Screens</div>
+          <div class="spec-tab" data-tab="design">Design System</div>
+          <div class="spec-tab" data-tab="data">Data Models</div>
+          <div class="spec-tab" data-tab="raw">Raw JSON</div>
+        </div>
+
+        <div class="spec-content" id="specContent" contenteditable="false"></div>
+
+        <div class="spec-actions">
+          <button class="btn btn-green" id="generateBtn">Generate App</button>
+          <button class="btn btn-outline" id="editSpecBtn">Edit Spec</button>
+          <button class="btn btn-outline" id="reanalyzeBtn">Re-analyze</button>
+          <span class="edit-hint" id="editHint"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 4: Progress (generation) -->
+    <div id="phaseGenerate" class="hidden">
+      <div class="progress">
+        <div class="progress-step done"><span class="dot"></span><span>Video analyzed</span></div>
+        <div class="progress-step done"><span class="dot"></span><span>Spec reviewed</span></div>
+        <div class="progress-step" id="step3"><span class="dot"></span><span>Generating project code...</span></div>
+        <div class="progress-step" id="step4"><span class="dot"></span><span>Packaging project...</span></div>
+      </div>
+    </div>
+
+    <!-- PHASE 5: Result -->
+    <div id="phaseResult" class="hidden">
+      <div class="result">
+        <h2 id="resultName"></h2>
+        <p id="resultDesc"></p>
+        <div class="stats">
+          <div class="stat"><div class="num" id="resultScreens">0</div><div class="label">Screens</div></div>
+          <div class="stat"><div class="num" id="resultFiles">0</div><div class="label">Files</div></div>
+        </div>
+        <div class="result-actions">
+          <a class="download-btn" id="downloadBtn" href="#">Download Project (.zip)</a>
+          <button class="btn btn-outline" id="regenerateBtn">Regenerate</button>
+          <button class="btn btn-outline" id="editAndRegenBtn">Edit Spec & Regenerate</button>
+          <button class="btn btn-outline" id="startOverBtn">Start Over</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="hidden error"></div>
+  </div>
+
+  <script>
+    // State
+    let selectedFile = null;
+    let jobId = null;
+    let currentSpec = null;
+    let currentTab = 'screens';
+    let isEditing = false;
+
+    // Elements
+    const $ = id => document.getElementById(id);
+    const phases = ['phaseUpload', 'phaseAnalyze', 'phaseSpec', 'phaseGenerate', 'phaseResult'];
+
+    function showPhase(name) {
+      phases.forEach(p => $(p).classList.add('hidden'));
+      $(name).classList.remove('hidden');
+      $('error').classList.add('hidden');
+    }
+
+    function showError(msg) {
+      $('error').textContent = msg;
+      $('error').classList.remove('hidden');
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    // --- Upload ---
+    const dropZone = $('dropZone');
+    const fileInput = $('fileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault(); dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) selectFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) selectFile(fileInput.files[0]); });
+
+    function selectFile(file) {
+      selectedFile = file;
+      $('fileName').textContent = file.name;
+      $('fileSize').textContent = formatSize(file.size);
+      $('fileInfo').classList.add('visible');
+      $('analyzeBtn').classList.remove('hidden');
+    }
+
+    // --- Analyze ---
+    $('analyzeBtn').addEventListener('click', startAnalysis);
+
+    async function startAnalysis() {
+      if (!selectedFile) return;
+      $('analyzeBtn').disabled = true;
+      $('analyzeBtn').textContent = 'Uploading...';
+
+      try {
+        // Upload the video
+        const formData = new FormData();
+        formData.append('video', selectedFile);
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+        if (!uploadRes.ok) { const e = await uploadRes.json(); throw new Error(e.detail); }
+        const { jobId: id } = await uploadRes.json();
+        jobId = id;
+
+        // Switch to analysis phase
+        showPhase('phaseAnalyze');
+        setStepState('step1', 'done');
+        setStepState('step2', 'active');
+
+        // SSE for analysis
+        const evtSource = new EventSource(`/api/analyze/${jobId}`);
+
+        evtSource.addEventListener('step', e => {
+          const data = JSON.parse(e.data);
+          if (data.step === 2) { setStepState('step1', 'done'); setStepState('step2', 'active'); }
+        });
+
+        evtSource.addEventListener('spec', e => {
+          const data = JSON.parse(e.data);
+          currentSpec = data.spec;
+          setStepState('step2', 'done');
+        });
+
+        evtSource.addEventListener('done', () => {
+          evtSource.close();
+          showSpecReview();
+        });
+
+        evtSource.addEventListener('error', e => {
+          // Check if it's an SSE data error or connection error
+          try {
+            const data = JSON.parse(e.data);
+            showError(data.message);
+          } catch {
+            // Connection closed normally after done event
+            if (currentSpec) return;
+            showError('Connection lost during analysis.');
+          }
+          evtSource.close();
+        });
+
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        $('analyzeBtn').disabled = false;
+        $('analyzeBtn').textContent = 'Analyze Video';
+      }
+    }
+
+    function setStepState(id, state) {
+      const el = $(id);
+      if (!el) return;
+      el.classList.remove('active', 'done');
+      if (state) el.classList.add(state);
+    }
+
+    // --- Spec Review ---
+    function showSpecReview() {
+      showPhase('phaseSpec');
+      isEditing = false;
+      $('editSpecBtn').textContent = 'Edit Spec';
+      $('editHint').textContent = '';
+      $('specContent').contentEditable = 'false';
+
+      $('specAppName').textContent = currentSpec.appName || 'Unnamed App';
+      $('specDesc').textContent = currentSpec.description || '';
+
+      // Render screen cards
+      const grid = $('screensGrid');
+      grid.innerHTML = '';
+      (currentSpec.screens || []).forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'screen-card';
+        card.innerHTML = `
+          <div class="screen-name">${s.name}</div>
+          <div class="screen-route">${s.route}</div>
+          <div class="screen-components">${(s.components || []).length} components</div>
+        `;
+        grid.appendChild(card);
+      });
+
+      renderTab('screens');
+    }
+
+    // Tabs
+    $('specTabs').addEventListener('click', e => {
+      const tab = e.target.closest('.spec-tab');
+      if (!tab) return;
+      document.querySelectorAll('.spec-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentTab = tab.dataset.tab;
+      renderTab(currentTab);
+    });
+
+    function renderTab(tab) {
+      const el = $('specContent');
+      let content = '';
+
+      if (tab === 'screens') {
+        content = JSON.stringify(currentSpec.screens || [], null, 2);
+      } else if (tab === 'design') {
+        content = JSON.stringify(currentSpec.designSystem || {}, null, 2);
+      } else if (tab === 'data') {
+        content = JSON.stringify(currentSpec.dataModels || [], null, 2);
+      } else {
+        content = JSON.stringify(currentSpec, null, 2);
+      }
+
+      el.textContent = content;
+    }
+
+    // Edit spec
+    $('editSpecBtn').addEventListener('click', () => {
+      isEditing = !isEditing;
+      const el = $('specContent');
+
+      if (isEditing) {
+        // Switch to raw JSON for editing
+        document.querySelectorAll('.spec-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('[data-tab="raw"]').classList.add('active');
+        currentTab = 'raw';
+        el.textContent = JSON.stringify(currentSpec, null, 2);
+        el.contentEditable = 'true';
+        el.focus();
+        $('editSpecBtn').textContent = 'Save Changes';
+        $('editHint').textContent = 'Editing raw JSON — modify and save';
+      } else {
+        // Save
+        try {
+          currentSpec = JSON.parse(el.textContent);
+          el.contentEditable = 'false';
+          $('editSpecBtn').textContent = 'Edit Spec';
+          $('editHint').textContent = 'Changes saved';
+          showSpecReview();
+        } catch (err) {
+          $('editHint').textContent = 'Invalid JSON — fix and try again';
+          isEditing = true;
+        }
+      }
+    });
+
+    // Re-analyze
+    $('reanalyzeBtn').addEventListener('click', () => {
+      showPhase('phaseAnalyze');
+      setStepState('step1', 'done');
+      setStepState('step2', 'active');
+
+      const evtSource = new EventSource(`/api/analyze/${jobId}`);
+      evtSource.addEventListener('spec', e => {
+        currentSpec = JSON.parse(e.data).spec;
+        setStepState('step2', 'done');
+      });
+      evtSource.addEventListener('done', () => { evtSource.close(); showSpecReview(); });
+      evtSource.addEventListener('error', e => {
+        try { showError(JSON.parse(e.data).message); } catch { if (!currentSpec) showError('Re-analysis failed.'); }
+        evtSource.close();
+      });
+    });
+
+    // --- Generate ---
+    $('generateBtn').addEventListener('click', startGeneration);
+
+    async function startGeneration() {
+      showPhase('phaseGenerate');
+      setStepState('step3', 'active');
+      setStepState('step4', '');
+
+      try {
+        const response = await fetch(`/api/generate/${jobId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spec: currentSpec }),
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              var eventType = line.slice(7);
+            }
+            if (line.startsWith('data: ') && eventType) {
+              const data = JSON.parse(line.slice(6));
+              handleGenEvent(eventType, data);
+              eventType = null;
+            }
+          }
+        }
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    function handleGenEvent(event, data) {
+      if (event === 'step') {
+        if (data.step === 3) { setStepState('step3', 'active'); }
+        if (data.step === 4) { setStepState('step3', 'done'); setStepState('step4', 'active'); }
+      }
+      if (event === 'complete') {
+        setStepState('step3', 'done');
+        setStepState('step4', 'done');
+        showResult(data);
+      }
+      if (event === 'error') {
+        showError(data.message);
+      }
+    }
+
+    // --- Result ---
+    function showResult(data) {
+      showPhase('phaseResult');
+      $('resultName').textContent = data.appName;
+      $('resultDesc').textContent = data.description;
+      $('resultScreens').textContent = data.screensCount;
+      $('resultFiles').textContent = data.filesCount;
+      $('downloadBtn').href = data.downloadUrl;
+    }
+
+    $('regenerateBtn').addEventListener('click', startGeneration);
+    $('editAndRegenBtn').addEventListener('click', () => showSpecReview());
+    $('startOverBtn').addEventListener('click', () => {
+      selectedFile = null; jobId = null; currentSpec = null;
+      $('fileInfo').classList.remove('visible');
+      $('analyzeBtn').classList.add('hidden');
+      showPhase('phaseUpload');
+    });
+  </script>
+</body>
+</html>

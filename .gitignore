@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Env
+.env
+venv/
+.venv/
+
+# App data
+uploads/
+generated_projects/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (generated projects may include these)
+node_modules/
+
+# Misc
+*.zip
+*.log
