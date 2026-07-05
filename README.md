@@ -1,20 +1,22 @@
 # Video to App
 
-Upload a video demo of any app. Get a working project back.
+Screen-record a demo of any web app's UI. Get back a pixel-faithful Next.js + TypeScript + Tailwind CSS replica — animations included.
 
 ## How it works
 
-1. You upload a video demo of an application
-2. Gemini watches the video and extracts a detailed app specification
-3. An LLM generates a complete project from that spec
-4. You download the project as a zip and run it
+1. You upload a screen recording of a web app being demoed
+2. Gemini watches the video and extracts a design spec: layout, design tokens, component states, and animation timing (durations + easing), plus a timestamp for each screen
+3. ffmpeg extracts a reference screenshot per screen at those timestamps
+4. Claude maps the design tokens into a Tailwind v4 theme (`globals.css` + root layout), then gets each screen's spec **and** screenshot and generates one App Router page per screen, with the animations wired up
+5. You download the project as a zip, then `npm install && npm run dev`
 
 ## Setup
 
 ```bash
 pip install -r requirements.txt
+brew install ffmpeg   # needed for keyframe extraction
 cp .env.example .env
-# Add your GEMINI_API_KEY to .env
+# Add GEMINI_API_KEY and ANTHROPIC_API_KEY to .env
 ```
 
 ## Usage
@@ -37,6 +39,6 @@ python pipeline.py path/to/demo-video.mp4
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GEMINI_API_KEY` | Yes | Google AI API key |
-| `ANTHROPIC_API_KEY` | No | Only if using Claude for code generation |
-| `CODE_GEN_PROVIDER` | No | `gemini` (default) or `anthropic` |
+| `GEMINI_API_KEY` | Yes | Google AI API key (video analysis) |
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key (UI generation) |
+| `CODE_GEN_PROVIDER` | No | `anthropic` (default, screenshot-grounded) or `gemini` (text-only fallback) |

@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 
 import config
 from video_analyzer import analyze_video
+from frame_extractor import extract_frames
 from code_generator import generate_project
 from project_writer import write_project, zip_project
 
@@ -107,12 +108,19 @@ async def generate(job_id: str, request: Request):
         raise HTTPException(status_code=404, detail="No spec found. Analyze a video first.")
 
     async def stream() -> AsyncGenerator[str, None]:
-        yield sse_event("step", {"step": 3, "message": "Generating project code..."})
+        yield sse_event("step", {"step": 3, "message": "Extracting keyframes & generating UI with Claude..."})
         await asyncio.sleep(0.1)
 
         try:
             loop = asyncio.get_event_loop()
-            files = await loop.run_in_executor(None, generate_project, app_spec)
+
+            # Pull reference screenshots at the spec's per-screen timestamps
+            video_path = videos_store.get(job_id)
+            frames = {}
+            if video_path and os.path.exists(video_path):
+                frames = await loop.run_in_executor(None, extract_frames, video_path, app_spec)
+
+            files = await loop.run_in_executor(None, generate_project, app_spec, frames)
 
             yield sse_event("step", {"step": 4, "message": "Packaging project..."})
             await asyncio.sleep(0.1)
