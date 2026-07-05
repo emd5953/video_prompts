@@ -10,6 +10,15 @@ Screen-record a demo of any web app's UI. Get back a pixel-faithful Next.js + Ty
 4. Claude maps the design tokens into a Tailwind v4 theme (`globals.css` + root layout), then gets each screen's spec **and** screenshot and generates one App Router page per screen, with the animations wired up
 5. You download the project as a zip, then `npm install && npm run dev`
 
+## Two output modes
+
+- **Replica** — a runnable Next.js project that clones the demoed app screen-for-screen.
+- **Design kit** (`--kit` in the CLI, "Generate Design Kit" in the UI) — a portable style-guide package for building *new* apps in the demoed app's visual language:
+  - `DESIGN.md` — an AI-facing style guide: exact tokens, per-state component rules with copy-paste TSX/Tailwind snippets, and a motion table (every animation with duration + easing) generalized into rules
+  - `tokens.css` — the Tailwind v4 theme, ready to drop into `app/globals.css`
+  - `refs/` — the keyframe screenshots, for visual grounding
+  - `README.md` — a ready-to-paste CLAUDE.md snippet that makes Claude Code follow the kit in your new project
+
 ## Setup
 
 ```bash

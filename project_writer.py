@@ -25,6 +25,11 @@ def write_project(project_name: str, files: dict) -> str:
         full_path = os.path.join(project_dir, filepath)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
 
+        if isinstance(content, bytes):
+            with open(full_path, "wb") as f:
+                f.write(content)
+            continue
+
         with open(full_path, "w", encoding="utf-8") as f:
             if isinstance(content, dict):
                 f.write(json.dumps(content, indent=2))

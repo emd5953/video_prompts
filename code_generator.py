@@ -238,6 +238,114 @@ def generate_with_anthropic(app_spec: dict, frames: dict | None = None) -> dict:
     return files
 
 
+DESIGN_KIT_SYSTEM = """You are an elite design-systems engineer. You are given screenshots of every screen of a web app plus a design spec (with animation timings) extracted from a demo video of it.
+
+Your job: write DESIGN.md — a style guide that lets an AI coding agent build a BRAND-NEW app that is visually and kinetically indistinguishable from this one. The agent will never see the video; your document and these screenshots are all it gets. It must be prescriptive instructions, not documentation.
+
+Ground every value in the screenshots. Where the written spec and the screenshots disagree, trust the screenshots. Estimate exact hex values, px sizes, and weights by looking at the pixels.
+
+Structure DESIGN.md as:
+
+1. **Identity** — one tight paragraph on the feel (density, contrast, warmth, energy) an agent should aim for.
+2. **Tokens** — a table of exact values: every color (hex) with its usage rule, font family/sizes/weights, spacing scale, radii per element type, shadow definitions. Phrase usage as rules: "Surfaces are #17181C with a 1px #26282D border — never elevate with shadows alone."
+3. **Typography & spacing rhythm** — the hierarchy and the base grid, with rules for when each step applies.
+4. **Components** — for each recurring component (buttons, cards, nav, inputs, tables, modals...): exact styling rules for every state (default/hover/focus/active/selected/disabled), followed by a canonical, copy-paste-ready TSX + Tailwind snippet. The agent should copy these patterns, not re-derive them.
+5. **Motion** — the most important section. A table of every animation: element | trigger | effect | duration (ms) | easing (exact CSS value). Then generalize into motion RULES the agent can apply to components that never appeared in the demo ("all hover transitions: 150ms ease-out on background/border only", "overlays enter: scale 0.98→1 + fade, 200ms cubic-bezier(...)"). Include the @keyframes / transition CSS snippets ready to paste.
+6. **States & interaction details** — focus rings, selection styles, loading/skeleton patterns, scroll behaviors (sticky headers, reveal-on-scroll).
+7. **Do / Don't** — 6-10 sharp rules that prevent the agent from drifting off-style (fonts it must never use, effects that would break the identity, etc.).
+
+Every rule must be specific enough that two different agents following it produce the same pixels. No vague words like "modern" or "clean" without the concrete values that define them.
+
+Return ONLY the markdown content of DESIGN.md. No fences around the whole document, no commentary."""
+
+CLAUDE_MD_SNIPPET = """# How to use this design kit
+
+Drop the `design-kit/` folder into the root of your new project, then add this to your project's `CLAUDE.md` (create the file if it doesn't exist):
+
+```markdown
+## Design system
+
+All UI in this project MUST follow `design-kit/DESIGN.md` exactly — tokens, component patterns, and the motion rules.
+
+- Import `design-kit/tokens.css` as the Tailwind theme (copy it into `app/globals.css`). Never invent new colors, radii, shadows, fonts, or animation durations — every value comes from the tokens or DESIGN.md.
+- Before building any screen or component, look at the screenshots in `design-kit/refs/` and match their density, contrast, and proportions.
+- Copy the component snippets in DESIGN.md as starting points instead of writing components from scratch.
+- Every interactive element gets the motion treatment from DESIGN.md's Motion section — exact durations and easings, no defaults.
+- If DESIGN.md doesn't cover a case, extrapolate from its rules and the reference screenshots — never fall back to generic styling.
+```
+
+For a specific screen, you can also point Claude at a reference directly:
+"Build the settings page. Match the feel and density of `design-kit/refs/02-settings.png`."
+"""
+
+
+def _slugify(name: str) -> str:
+    return re.sub(r"[^a-z0-9-]", "-", (name or "").lower()).strip("-") or "screen"
+
+
+def generate_design_kit(app_spec: dict, frames: dict | None = None) -> dict:
+    """
+    Generate a portable design kit: DESIGN.md (AI-facing style guide),
+    tokens.css (Tailwind theme), and the reference screenshots.
+    Claude writes the guide while looking at ALL keyframes so every
+    value is grounded in actual pixels.
+    """
+    client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+    frames = frames or {}
+    screens = app_spec.get("screens", [])
+
+    files: dict = {}
+    content: list[dict] = []
+    for i, screen in enumerate(screens[:20]):
+        name = screen.get("name", f"screen-{i}")
+        frame_path = frames.get(name)
+        if not frame_path:
+            continue
+        ref_name = f"refs/{i:02d}-{_slugify(name)}.png"
+        with open(frame_path, "rb") as f:
+            files[ref_name] = f.read()
+        content.append(_encode_image(frame_path))
+        content.append({
+            "type": "text",
+            "text": f"Above: screenshot of the \"{name}\" screen (saved in the kit as {ref_name}).",
+        })
+
+    content.append({
+        "type": "text",
+        "text": (
+            "## Full design spec extracted from the demo video\n"
+            + json.dumps(app_spec, indent=2)
+            + "\n\nWrite DESIGN.md now. Ground every value in the screenshots above; "
+            "trust them over the spec where they disagree. Reference the screenshots "
+            "by their refs/ filenames where a visual example helps."
+        ),
+    })
+
+    print("Writing DESIGN.md with Claude (grounded on all keyframes)...")
+    files["DESIGN.md"] = _strip_fences(_claude_call(client, DESIGN_KIT_SYSTEM, content))
+
+    print("Generating tokens.css with Claude...")
+    foundation_context = {
+        "appName": app_spec.get("appName"),
+        "designTokens": app_spec.get("designTokens"),
+        "navigation": app_spec.get("navigation"),
+        "screenTransitions": app_spec.get("screenTransitions"),
+        "animationsAcrossScreens": [
+            a for s in screens for a in s.get("animations", [])
+        ],
+    }
+    foundation_raw = _claude_call(
+        client, FOUNDATION_SYSTEM, json.dumps(foundation_context, indent=2)
+    )
+    foundation_files = _parse_files_response(foundation_raw)
+    files["tokens.css"] = foundation_files.get(
+        "app/globals.css", "/* foundation generation failed — see DESIGN.md tokens */"
+    )
+
+    files["README.md"] = CLAUDE_MD_SNIPPET
+    return files
+
+
 LEGACY_GEMINI_PROMPT = """You are an expert frontend developer. You are given a design specification (JSON) extracted from a screen recording of a web app.
 
 Generate a complete Next.js 15 (App Router) + TypeScript + Tailwind CSS project that replicates the UI, one route per screen, including every animation with its stated duration and easing. Include all config files (package.json, tsconfig.json, postcss config, app/globals.css, app/layout.tsx).

@@ -26,7 +26,7 @@ Watch closely for:
 - Scroll behavior (sticky headers, parallax, reveal-on-scroll)
 - The actual text content and data visible on screen (reproduce it verbatim where readable)
 
-For each screen, pick a "timestamp" (in seconds from the start of the video) where the screen is fully rendered, static, and unobstructed — this frame will be extracted as a reference screenshot.
+For each screen, pick a "timestamp" where the screen is fully rendered, static, and unobstructed — this frame will be extracted as a reference screenshot. The timestamp MUST be a plain decimal number of SECONDS from the start of the video: 12.5 means twelve and a half seconds, 92 means one minute thirty-two. NEVER use MM:SS or MM.SS notation (0:12 must be written as 12, not 0.12) and never normalized 0-1 fractions.
 
 Return a JSON object with this structure:
 

@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 import config
 from video_analyzer import analyze_video
 from frame_extractor import extract_frames
-from code_generator import generate_project
+from code_generator import generate_project, generate_design_kit
 from project_writer import write_project, zip_project
 
 app = FastAPI(title="Video to App", description="Upload a video demo, get a working app.")
@@ -107,8 +107,15 @@ async def generate(job_id: str, request: Request):
     if not app_spec:
         raise HTTPException(status_code=404, detail="No spec found. Analyze a video first.")
 
+    mode = body.get("mode", "replica")
+
     async def stream() -> AsyncGenerator[str, None]:
-        yield sse_event("step", {"step": 3, "message": "Extracting keyframes & generating UI with Claude..."})
+        message = (
+            "Extracting keyframes & writing the design kit with Claude..."
+            if mode == "kit"
+            else "Extracting keyframes & generating UI with Claude..."
+        )
+        yield sse_event("step", {"step": 3, "message": message})
         await asyncio.sleep(0.1)
 
         try:
@@ -120,12 +127,15 @@ async def generate(job_id: str, request: Request):
             if video_path and os.path.exists(video_path):
                 frames = await loop.run_in_executor(None, extract_frames, video_path, app_spec)
 
-            files = await loop.run_in_executor(None, generate_project, app_spec, frames)
+            generator = generate_design_kit if mode == "kit" else generate_project
+            files = await loop.run_in_executor(None, generator, app_spec, frames)
 
             yield sse_event("step", {"step": 4, "message": "Packaging project..."})
             await asyncio.sleep(0.1)
 
             app_name = app_spec.get("appName", "generated-app")
+            if mode == "kit":
+                app_name = f"{app_name}-design-kit"
 
             project_dir = await loop.run_in_executor(None, write_project, app_name, files)
             zip_path = await loop.run_in_executor(None, zip_project, project_dir)

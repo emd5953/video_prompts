@@ -10,13 +10,14 @@ import os
 
 from video_analyzer import analyze_video
 from frame_extractor import extract_frames
-from code_generator import generate_project
+from code_generator import generate_project, generate_design_kit
 from project_writer import write_project, zip_project
 
 
-def run_pipeline(video_path: str, spec_override: dict | None = None) -> dict:
+def run_pipeline(video_path: str, spec_override: dict | None = None, mode: str = "replica") -> dict:
     """
-    Full pipeline: video → analysis → code generation → project files.
+    Full pipeline: video → analysis → generation → files.
+    mode="replica" builds a Next.js clone; mode="kit" builds a portable design kit.
     If spec_override is provided, skips video analysis and uses that spec directly.
     """
     result = {
@@ -51,9 +52,14 @@ def run_pipeline(video_path: str, spec_override: dict | None = None) -> dict:
     frames = extract_frames(video_path, app_spec) if os.path.exists(video_path) else {}
     result["frames_count"] = len(frames)
 
-    # Step 3: Generate code
-    print("\n=== Step 3: Generating project code ===")
-    files = generate_project(app_spec, frames)
+    # Step 3: Generate code or design kit
+    if mode == "kit":
+        print("\n=== Step 3: Generating design kit ===")
+        files = generate_design_kit(app_spec, frames)
+        app_name = f"{app_name}-design-kit"
+    else:
+        print("\n=== Step 3: Generating project code ===")
+        files = generate_project(app_spec, frames)
     result["files_count"] = len(files)
     print(f"Generated {len(files)} files")
 
@@ -76,8 +82,8 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python pipeline.py <video_path>")
-        print("       python pipeline.py <video_path> --spec <spec.json>")
+        print("Usage: python pipeline.py <video_path> [--kit] [--spec <spec.json>]")
+        print("  --kit   generate a portable design kit instead of a replica project")
         sys.exit(1)
 
     video_path = sys.argv[1]
@@ -88,4 +94,5 @@ if __name__ == "__main__":
         with open(sys.argv[spec_idx]) as f:
             spec = json.load(f)
 
-    run_pipeline(video_path, spec_override=spec)
+    mode = "kit" if "--kit" in sys.argv else "replica"
+    run_pipeline(video_path, spec_override=spec, mode=mode)

@@ -199,6 +199,7 @@
 
         <div class="spec-actions">
           <button class="btn btn-green" id="generateBtn">Generate App</button>
+          <button class="btn btn-green" id="kitBtn">Generate Design Kit</button>
           <button class="btn btn-outline" id="editSpecBtn">Edit Spec</button>
           <button class="btn btn-outline" id="reanalyzeBtn">Re-analyze</button>
           <span class="edit-hint" id="editHint"></span>
@@ -460,9 +461,12 @@
     });
 
     // --- Generate ---
-    $('generateBtn').addEventListener('click', startGeneration);
+    let lastMode = 'replica';
+    $('generateBtn').addEventListener('click', () => startGeneration('replica'));
+    $('kitBtn').addEventListener('click', () => startGeneration('kit'));
 
-    async function startGeneration() {
+    async function startGeneration(mode) {
+      lastMode = mode || lastMode;
       showPhase('phaseGenerate');
       setStepState('step3', 'active');
       setStepState('step4', '');
@@ -471,7 +475,7 @@
         const response = await fetch(`/api/generate/${jobId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ spec: currentSpec }),
+          body: JSON.stringify({ spec: currentSpec, mode: lastMode }),
         });
 
         const reader = response.body.getReader();
@@ -527,7 +531,7 @@
       $('downloadBtn').href = data.downloadUrl;
     }
 
-    $('regenerateBtn').addEventListener('click', startGeneration);
+    $('regenerateBtn').addEventListener('click', () => startGeneration(lastMode));
     $('editAndRegenBtn').addEventListener('click', () => showSpecReview());
     $('startOverBtn').addEventListener('click', () => {
       selectedFile = null; jobId = null; currentSpec = null;
