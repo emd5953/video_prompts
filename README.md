@@ -17,7 +17,11 @@ Screen-record a demo of any web app's UI. Get back a pixel-faithful Next.js + Ty
   - `DESIGN.md` — an AI-facing style guide: exact tokens, per-state component rules with copy-paste TSX/Tailwind snippets, and a motion table (every animation with duration + easing) generalized into rules
   - `tokens.css` — the Tailwind v4 theme, ready to drop into `app/globals.css`
   - `refs/` — the keyframe screenshots, for visual grounding
-  - `README.md` — a ready-to-paste CLAUDE.md snippet that makes Claude Code follow the kit in your new project
+  - `README.md` — the full how-to: setup, building a new app in the style, and restyling an existing app in layers (theme → motion → components)
+
+### Using a kit
+
+Every kit ships with its own `README.md` walkthrough. The short version: copy `design-kit/` into your project root, paste the kit README's `## Design system` block into your project's `CLAUDE.md`, then build with Claude Code normally — you never describe the style in prompts. For existing apps, restyle in layers on a branch: theme first, then motion, then components screen-by-screen. Works on any stack; the kit is just tokens + rules + screenshots.
 
 ## Setup
 

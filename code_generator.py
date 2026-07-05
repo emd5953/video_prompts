@@ -260,7 +260,23 @@ Return ONLY the markdown content of DESIGN.md. No fences around the whole docume
 
 CLAUDE_MD_SNIPPET = """# How to use this design kit
 
-Drop the `design-kit/` folder into the root of your new project, then add this to your project's `CLAUDE.md` (create the file if it doesn't exist):
+This kit is a **style pack for AI coding agents** (Claude Code, etc.). It captures another app's
+look, feel, and animations so YOUR app comes out in that visual language — you never have to
+describe the style in a prompt.
+
+What's inside:
+
+- `DESIGN.md` — the style guide (tokens, component patterns, motion rules). This is what the agent reads.
+- `tokens.css` — the color/font/radius/shadow theme as a ready-to-use Tailwind v4 stylesheet.
+- `refs/` — reference screenshots of the original app, for visual grounding.
+
+---
+
+## Setup (both cases)
+
+1. Copy the `design-kit/` folder into the ROOT of your project.
+2. Add the block below to your project's `CLAUDE.md` (create the file if it doesn't exist,
+   append if it does):
 
 ```markdown
 ## Design system
@@ -274,8 +290,43 @@ All UI in this project MUST follow `design-kit/DESIGN.md` exactly — tokens, co
 - If DESIGN.md doesn't cover a case, extrapolate from its rules and the reference screenshots — never fall back to generic styling.
 ```
 
-For a specific screen, you can also point Claude at a reference directly:
-"Build the settings page. Match the feel and density of `design-kit/refs/02-settings.png`."
+That's it. Claude Code reads CLAUDE.md automatically every session.
+
+---
+
+## Case 1: Building a NEW app
+
+Just build. Open Claude Code in the project and describe what you want — never mention the style:
+
+> "Set up a Next.js app and build a landing page for my workout tracker: hero, features section, signup form."
+
+Every screen you ask for comes out in the kit's style automatically. For a screen that should
+mirror a specific original screen, point at a reference:
+
+> "Build the settings page. Match the feel and density of design-kit/refs/02-settings.png."
+
+---
+
+## Case 2: Restyling an EXISTING app
+
+Work in layers, on a branch (`git checkout -b restyle`) — one giant restyle is unreviewable.
+Check the result in your dev server after each layer:
+
+**Layer 1 — theme.** Gets you ~70% of the look with zero markup changes:
+
+> "Restyle this app to match design-kit/DESIGN.md. Start with the theme layer only: replace our colors, fonts, radii, and shadows with design-kit/tokens.css — merge it into our globals/tailwind config and map our existing CSS variables to the new tokens. Don't touch component markup yet."
+
+**Layer 2 — motion:**
+
+> "Now the motion pass: apply the Motion rules from DESIGN.md across the app — hover transitions, entry animations, the duration/easing table. Replace our existing transitions."
+
+**Layer 3 — components, one screen at a time:**
+
+> "Restyle the dashboard page to match the component patterns in DESIGN.md — buttons, cards, and nav follow its snippets. Compare against design-kit/refs/ for density and spacing."
+
+Your app does NOT need to be Next.js or Tailwind — DESIGN.md is just colors, type, and motion
+rules; the agent translates them into whatever your codebase uses. `tokens.css` is a convenience
+for Tailwind projects; on other stacks, ask the agent to port the values into your styling system.
 """
 
 

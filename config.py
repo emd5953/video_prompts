@@ -14,7 +14,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Gemini model for video understanding (motion, timing, animation analysis).
 # Pro-tier matters here: reading exact UI text, hex estimation, timing.
-GEMINI_VIDEO_MODEL = os.getenv("GEMINI_VIDEO_MODEL", "gemini-3.1-pro")
+GEMINI_VIDEO_MODEL = os.getenv("GEMINI_VIDEO_MODEL", "gemini-3.1-pro-preview")
 
 # Model for code generation (can be "anthropic" or "gemini")
 # Anthropic is the default: Claude gets the extracted keyframe screenshots
